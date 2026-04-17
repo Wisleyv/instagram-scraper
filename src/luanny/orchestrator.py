@@ -91,16 +91,21 @@ def run_collection(profile: str, config: AppConfig) -> CollectionResult:
             record = extract_post(session, post_id, post_url, profile, config)
             posts.append(record)
 
+        from pathlib import Path
+        timestamp_str = metadata.started_at.strftime("%Y%m%d_%H%M%S")
+        run_dir = Path(config.output_dir) / f"{profile}_{timestamp_str}"
+
         # --- Etapa 5: Captura de evidências ---
         if config.capture_evidence:
             from luanny.evidence_capture import capture_evidence
 
             logger.info("etapa_evidência", status="iniciando")
             for record in posts:
-                capture_evidence(session, record, config)
+                capture_evidence(session, record, config, base_output_dir=run_dir)
             logger.info("etapa_evidência", status="concluída")
 
         # --- Etapa 6: Contabilizar resultados ---
+        # Recalcular métricas finais de posts baseados no array final
         metadata.posts_collected = sum(1 for p in posts if not p.errors)
         metadata.posts_failed = sum(
             1 for p in posts if p.errors and p.caption is None and not p.media
@@ -116,7 +121,7 @@ def run_collection(profile: str, config: AppConfig) -> CollectionResult:
         from luanny.exporters import export_results
 
         logger.info("etapa_exportação", status="iniciando")
-        export_results(result, config)
+        export_results(result, config, base_output_dir=run_dir)
         logger.info("etapa_exportação", status="concluída")
 
     finally:
