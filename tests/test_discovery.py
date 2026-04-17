@@ -1,0 +1,136 @@
+"""
+Testes do módulo profile_discovery — Fase 2.
+
+Testa a lógica de navegação num perfil, rolagem simulada do grid
+e extração dos identificadores a partir das URLs.
+"""
+
+from __future__ import annotations
+
+from unittest.mock import MagicMock, call
+
+import pytest
+
+from luanny.models import AppConfig
+from luanny.profile_discovery import discover_posts
+
+
+@pytest.fixture()
+def mock_config() -> AppConfig:
+    """Config de teste para discovery."""
+    return AppConfig(
+        instagram_username="test_user",
+        instagram_password="test_pass",
+        max_posts=5,
+        headless=True,
+    )
+
+
+@pytest.fixture()
+def mock_session(mock_config):
+    """Cria um BrowserSession mockado."""
+    session = MagicMock()
+    session.config = mock_config
+    session.page = MagicMock()
+    return session
+
+
+class TestProfileDiscovery:
+    """Testes da descoberta de posts."""
+
+    def test_discover_posts_vazio(self, mock_session, mock_config, monkeypatch):
+        """Deve retornar vazio se nenhum post for encontrado e o fim da página for alcançado."""
+        # Fix: Mock time.sleep e human_delay_sync para os testes rodarem rápido
+        monkeypatch.setattr("time.sleep", MagicMock())
+        monkeypatch.setattr("luanny.browser.human_delay_sync", MagicMock())
+        monkeypatch.setattr("luanny.auth._dismiss_cookie_banner", MagicMock())
+        monkeypatch.setattr("luanny.auth._dismiss_post_login_dialogs", MagicMock())
+
+        # Configura o mock do locator para retornar vazio
+        mock_locator = MagicMock()
+        mock_locator.all.return_value = []
+        mock_session.page.locator.return_value = mock_locator
+
+        # Eval da rolagem (simulando altura de página que não muda)
+        mock_session.page.evaluate.return_value = 1000
+
+        result = discover_posts(mock_session, "https://instagram.com/test", mock_config)
+
+        assert result == []
+
+    def test_discover_posts_com_limite(self, mock_session, mock_config, monkeypatch):
+        """Deve extrair os IDs corretamente, parando quando atingir max_posts."""
+        monkeypatch.setattr("time.sleep", MagicMock())
+        monkeypatch.setattr("luanny.browser.human_delay_sync", MagicMock())
+        monkeypatch.setattr("luanny.auth._dismiss_cookie_banner", MagicMock())
+        monkeypatch.setattr("luanny.auth._dismiss_post_login_dialogs", MagicMock())
+
+        # Vamos simular a página retornando 3 elementos na primeira rolagem, e mais 3 na segunda
+        el1 = MagicMock()
+        el1.get_attribute.return_value = "/p/POST_1/"
+        el2 = MagicMock()
+        el2.get_attribute.return_value = "/reel/REEL_1/"
+        el3 = MagicMock()
+        el3.get_attribute.return_value = "/p/POST_2/"
+        el4 = MagicMock()
+        el4.get_attribute.return_value = "/p/POST_3/"
+        el5 = MagicMock()
+        el5.get_attribute.return_value = "/p/POST_4/"
+        el6 = MagicMock()
+        el6.get_attribute.return_value = "/p/POST_5/"
+
+        mock_locator = MagicMock()
+        # side_effect retorna listas sequenciais em cada chamada de .all()
+        # Mas dentro do loop itera por seletores_to_try.
+        # Digamos que na primeira vez (.all() do primeiro seletor) ele retorne 3 elementos
+        mock_locator.all.side_effect = [
+            [el1, el2, el3],  # Primeira rolagem, primeiro seletor
+            [el3, el4, el5, el6],  # Segunda rolagem, encontra duplicado + novos
+        ]
+        mock_session.page.locator.return_value = mock_locator
+
+        # Simulando alturas de página simulando scroll
+        mock_session.page.evaluate.side_effect = [
+            1000, # new_height
+            None, # window.scrollTo
+            2000, # current_height
+            2000, # new_height
+            None, # window.scrollTo
+            3000, # current_height
+        ]
+
+        result = discover_posts(mock_session, "https://instagram.com/test", mock_config)
+
+        # Configuramos max_posts=5 no mock_config
+        assert len(result) == 5
+        assert result[0] == ("POST_1", "https://www.instagram.com/p/POST_1/")
+        assert result[1] == ("REEL_1", "https://www.instagram.com/reel/REEL_1/")
+        assert result[2] == ("POST_2", "https://www.instagram.com/p/POST_2/")
+        assert result[3] == ("POST_3", "https://www.instagram.com/p/POST_3/")
+        assert result[4] == ("POST_4", "https://www.instagram.com/p/POST_4/")
+
+    def test_discover_posts_com_invalidos(self, mock_session, mock_config, monkeypatch):
+        """Deve ignorar elementos sem href ou que não se encaixam no padrão /p/ ou /reel/."""
+        monkeypatch.setattr("time.sleep", MagicMock())
+        monkeypatch.setattr("luanny.browser.human_delay_sync", MagicMock())
+        monkeypatch.setattr("luanny.auth._dismiss_cookie_banner", MagicMock())
+        monkeypatch.setattr("luanny.auth._dismiss_post_login_dialogs", MagicMock())
+
+        el_invalid1 = MagicMock()
+        el_invalid1.get_attribute.return_value = None
+        el_invalid2 = MagicMock()
+        el_invalid2.get_attribute.return_value = "/about/"
+        el_valid = MagicMock()
+        el_valid.get_attribute.return_value = "/p/VALID/"
+
+        mock_locator = MagicMock()
+        mock_locator.all.return_value = [el_invalid1, el_invalid2, el_valid]
+        mock_session.page.locator.return_value = mock_locator
+
+        # Fim do perfil na primeira tentativa
+        mock_session.page.evaluate.return_value = 1000
+
+        result = discover_posts(mock_session, "https://instagram.com/test", mock_config)
+
+        assert len(result) == 1
+        assert result[0] == ("VALID", "https://www.instagram.com/p/VALID/")

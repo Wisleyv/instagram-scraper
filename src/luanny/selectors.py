@@ -49,9 +49,9 @@ LOGIN_SUBMIT_BUTTON = Selector(
 # ---------------------------------------------------------------------------
 
 PROFILE_POSTS_GRID = Selector(
-    primary="article a[href*='/p/'], article a[href*='/reel/']",
-    fallbacks=("main article a[href*='/p/']",),
-    description="Links de posts no grid do perfil",
+    primary="a[href*='/p/'], a[href*='/reel/']",
+    fallbacks=("article a[href*='/p/'], article a[href*='/reel/']",),
+    description="Links de posts no grid do perfil principal",
 )
 
 # ---------------------------------------------------------------------------
