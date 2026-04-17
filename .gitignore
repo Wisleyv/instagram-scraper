@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Ambiente virtual
+.venv/
+venv/
+env/
+
+# Configuração sensível
+.env
+storage_state.json
+
+# Dados de coleta (grandes demais para versionamento)
+data/
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PyInstaller
+*.spec
+
+# Testes
+.coverage
+htmlcov/
+.pytest_cache/
