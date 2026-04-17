@@ -85,18 +85,30 @@ def run_collection(profile: str, config: AppConfig) -> CollectionResult:
         # --- Etapa 4: Extração de dados por post ---
         from luanny.post_extractor import extract_post
         from luanny.browser import human_delay_sync
+        from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 
         posts = []
-        for i, (post_id, post_url) in enumerate(post_urls):
-            logger.info("etapa_extração", post=f"{i + 1}/{len(post_urls)}", post_id=post_id)
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            transient=True,
+        ) as progress:
+            task_ext = progress.add_task(f"[cyan]Extraindo posts de @{profile}...", total=len(post_urls))
             
-            # (5.3) Rate Limiting dinâmico configurável para evitar Action Block da Meta
-            if i > 0:
-                logger.debug("rate_limiting", msg=f"Aguardando entre {config.delay_min} e {config.delay_max}s")
-                human_delay_sync(config.delay_min, config.delay_max)
+            for i, (post_id, post_url) in enumerate(post_urls):
+                logger.debug("etapa_extração", post=f"{i + 1}/{len(post_urls)}", post_id=post_id)
                 
-            record = extract_post(session, post_id, post_url, profile, config)
-            posts.append(record)
+                # (5.3) Rate Limiting dinâmico configurável para evitar Action Block da Meta
+                if i > 0:
+                    logger.debug("rate_limiting", msg=f"Aguardando entre {config.delay_min} e {config.delay_max}s")
+                    human_delay_sync(config.delay_min, config.delay_max)
+                    
+                record = extract_post(session, post_id, post_url, profile, config)
+                posts.append(record)
+                progress.advance(task_ext)
 
         from pathlib import Path
         timestamp_str = metadata.started_at.strftime("%Y%m%d_%H%M%S")
@@ -107,8 +119,17 @@ def run_collection(profile: str, config: AppConfig) -> CollectionResult:
             from luanny.evidence_capture import capture_evidence
 
             logger.info("etapa_evidência", status="iniciando")
-            for record in posts:
-                capture_evidence(session, record, config, base_output_dir=run_dir)
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TaskProgressColumn(),
+                transient=True,
+            ) as progress:
+                task_ev = progress.add_task("[magenta]Capturando Evidências (Screenshots/HTML)...", total=len(posts))
+                for record in posts:
+                    capture_evidence(session, record, config, base_output_dir=run_dir)
+                    progress.advance(task_ev)
             logger.info("etapa_evidência", status="concluída")
 
         # --- Etapa 6: Contabilizar resultados ---
