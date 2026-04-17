@@ -24,9 +24,9 @@ from luanny.auth import (
     _invalidate_session,
     INSTAGRAM_LOGIN_URL,
     INSTAGRAM_HOME_URL,
-    LOGIN_USERNAME_SELECTOR,
-    LOGIN_PASSWORD_SELECTOR,
-    LOGIN_SUBMIT_SELECTOR,
+    LOGIN_USERNAME_SELECTORS,
+    LOGIN_PASSWORD_SELECTORS,
+    LOGIN_SUBMIT_SELECTORS,
 )
 from luanny.browser import BrowserSession
 from luanny.models import AppConfig
