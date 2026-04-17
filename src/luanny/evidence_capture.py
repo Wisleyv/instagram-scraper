@@ -4,23 +4,26 @@ Módulo de captura de evidências técnicas.
 Gera screenshot, salva HTML bruto e calcula hashes SHA-256
 para cada post coletado, com metadados de reprodutibilidade.
 
-STUB — Fase 0: simula captura. Implementação real na Fase 4.
+STUB — simula captura. Implementação real na Fase 4.
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING
 
 from luanny import __version__
 from luanny.log import get_logger
 from luanny.models import AppConfig, Evidence, PostRecord
 
+if TYPE_CHECKING:
+    from luanny.browser import BrowserSession
+
 logger = get_logger("evidence_capture")
 
 
 def capture_evidence(
-    browser_context: Any,
+    session: BrowserSession,
     record: PostRecord,
     config: AppConfig,
 ) -> None:
@@ -31,7 +34,7 @@ def capture_evidence(
     Atualiza o campo `evidence` do PostRecord in-place.
 
     Args:
-        browser_context: Contexto do browser Playwright.
+        session: Sessão do browser Playwright.
         record: PostRecord do post (será atualizado com evidência).
         config: Configuração da aplicação.
     """

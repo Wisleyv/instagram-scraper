@@ -11,7 +11,8 @@ Coordena o pipeline completo de coleta:
   7. Exportar arquivos
   8. Encerrar e gerar relatório
 
-Na Fase 0 (scaffold), cada etapa é um stub que registra sua execução.
+Fase 1: browser e auth são implementações reais.
+Etapas 3–7 continuam como stubs.
 """
 
 from __future__ import annotations
@@ -59,68 +60,68 @@ def run_collection(profile: str, config: AppConfig) -> CollectionResult:
     )
 
     # --- Etapa 1: Inicializar browser ---
-    from luanny.browser import create_browser_context
+    from luanny.browser import BrowserSession, create_browser_context, close_browser_context
 
     logger.info("etapa_browser", status="iniciando")
-    browser_context = create_browser_context(config)
+    session = create_browser_context(config)
     logger.info("etapa_browser", status="concluída")
 
-    # --- Etapa 2: Autenticação ---
-    from luanny.auth import ensure_authenticated
+    try:
+        # --- Etapa 2: Autenticação ---
+        from luanny.auth import ensure_authenticated
 
-    logger.info("etapa_auth", status="iniciando")
-    ensure_authenticated(browser_context, config)
-    logger.info("etapa_auth", status="concluída")
+        logger.info("etapa_auth", status="iniciando")
+        ensure_authenticated(session, config)
+        logger.info("etapa_auth", status="concluída")
 
-    # --- Etapa 3: Descoberta de postagens ---
-    from luanny.profile_discovery import discover_posts
+        # --- Etapa 3: Descoberta de postagens ---
+        from luanny.profile_discovery import discover_posts
 
-    logger.info("etapa_discovery", status="iniciando", profile=profile)
-    post_urls = discover_posts(browser_context, profile_url, config)
-    metadata.posts_discovered = len(post_urls)
-    logger.info("etapa_discovery", status="concluída", posts_encontrados=len(post_urls))
+        logger.info("etapa_discovery", status="iniciando", profile=profile)
+        post_urls = discover_posts(session, profile_url, config)
+        metadata.posts_discovered = len(post_urls)
+        logger.info("etapa_discovery", status="concluída", posts_encontrados=len(post_urls))
 
-    # --- Etapa 4: Extração de dados por post ---
-    from luanny.post_extractor import extract_post
+        # --- Etapa 4: Extração de dados por post ---
+        from luanny.post_extractor import extract_post
 
-    posts = []
-    for i, (post_id, post_url) in enumerate(post_urls):
-        logger.info("etapa_extração", post=f"{i + 1}/{len(post_urls)}", post_id=post_id)
-        record = extract_post(browser_context, post_id, post_url, profile, config)
-        posts.append(record)
+        posts = []
+        for i, (post_id, post_url) in enumerate(post_urls):
+            logger.info("etapa_extração", post=f"{i + 1}/{len(post_urls)}", post_id=post_id)
+            record = extract_post(session, post_id, post_url, profile, config)
+            posts.append(record)
 
-    # --- Etapa 5: Captura de evidências ---
-    if config.capture_evidence:
-        from luanny.evidence_capture import capture_evidence
+        # --- Etapa 5: Captura de evidências ---
+        if config.capture_evidence:
+            from luanny.evidence_capture import capture_evidence
 
-        logger.info("etapa_evidência", status="iniciando")
-        for record in posts:
-            capture_evidence(browser_context, record, config)
-        logger.info("etapa_evidência", status="concluída")
+            logger.info("etapa_evidência", status="iniciando")
+            for record in posts:
+                capture_evidence(session, record, config)
+            logger.info("etapa_evidência", status="concluída")
 
-    # --- Etapa 6: Contabilizar resultados ---
-    metadata.posts_collected = sum(1 for p in posts if not p.errors)
-    metadata.posts_failed = sum(
-        1 for p in posts if p.errors and p.caption is None and not p.media
-    )
-    metadata.posts_partial = sum(
-        1 for p in posts if p.errors and (p.caption is not None or bool(p.media))
-    )
-    metadata.finished_at = datetime.now(timezone.utc)
+        # --- Etapa 6: Contabilizar resultados ---
+        metadata.posts_collected = sum(1 for p in posts if not p.errors)
+        metadata.posts_failed = sum(
+            1 for p in posts if p.errors and p.caption is None and not p.media
+        )
+        metadata.posts_partial = sum(
+            1 for p in posts if p.errors and (p.caption is not None or bool(p.media))
+        )
+        metadata.finished_at = datetime.now(timezone.utc)
 
-    result = CollectionResult(metadata=metadata, posts=posts)
+        result = CollectionResult(metadata=metadata, posts=posts)
 
-    # --- Etapa 7: Exportação ---
-    from luanny.exporters import export_results
+        # --- Etapa 7: Exportação ---
+        from luanny.exporters import export_results
 
-    logger.info("etapa_exportação", status="iniciando")
-    export_results(result, config)
-    logger.info("etapa_exportação", status="concluída")
+        logger.info("etapa_exportação", status="iniciando")
+        export_results(result, config)
+        logger.info("etapa_exportação", status="concluída")
 
-    # --- Etapa 8: Encerramento ---
-    from luanny.browser import close_browser_context
-
-    close_browser_context(browser_context)
+    finally:
+        # --- Etapa 8: Encerramento (sempre executa) ---
+        close_browser_context(session)
 
     logger.info(
         "coleta_finalizada",

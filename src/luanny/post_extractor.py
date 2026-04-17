@@ -4,13 +4,13 @@ Módulo de extração de dados do post.
 Abre cada post em sua própria página e extrai todos os dados
 de acessibilidade previstos no schema PostRecord.
 
-STUB — Fase 0: retorna PostRecord mock. Implementação real na Fase 3.
+STUB — retorna PostRecord mock. Implementação real na Fase 3.
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING
 
 from luanny.log import get_logger
 from luanny.models import (
@@ -22,11 +22,14 @@ from luanny.models import (
     PostType,
 )
 
+if TYPE_CHECKING:
+    from luanny.browser import BrowserSession
+
 logger = get_logger("post_extractor")
 
 
 def extract_post(
-    browser_context: Any,
+    session: BrowserSession,
     post_id: str,
     post_url: str,
     profile_username: str,
@@ -39,7 +42,7 @@ def extract_post(
     ARIA labels e sinais de acessibilidade.
 
     Args:
-        browser_context: Contexto do browser Playwright.
+        session: Sessão do browser Playwright.
         post_id: ID do post no Instagram.
         post_url: URL canônica do post.
         profile_username: Username do perfil-alvo.

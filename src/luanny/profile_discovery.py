@@ -4,21 +4,24 @@ Módulo de descoberta de postagens no perfil.
 Navega até o perfil-alvo, rola o grid de posts e captura
 URLs/IDs de postagens até o limite definido.
 
-STUB — Fase 0: retorna lista mock. Implementação real na Fase 2.
+STUB — retorna lista mock. Implementação real na Fase 2.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
 from luanny.log import get_logger
 from luanny.models import AppConfig
+
+if TYPE_CHECKING:
+    from luanny.browser import BrowserSession
 
 logger = get_logger("profile_discovery")
 
 
 def discover_posts(
-    browser_context: Any,
+    session: BrowserSession,
     profile_url: str,
     config: AppConfig,
 ) -> list[tuple[str, str]]:
@@ -28,7 +31,7 @@ def discover_posts(
     Navega até o perfil, rola o grid e captura URLs de posts.
 
     Args:
-        browser_context: Contexto do browser Playwright.
+        session: Sessão do browser Playwright.
         profile_url: URL completa do perfil-alvo.
         config: Configuração da aplicação.
 

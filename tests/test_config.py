@@ -24,12 +24,16 @@ class TestLoadConfig:
         assert config.browser_language == "pt-BR"  # default
 
     def test_load_config_fails_without_credentials(
-        self, env_without_credentials: None
+        self, env_without_credentials: None, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Configuração falha cedo e claramente sem credenciais."""
-        with pytest.raises(SystemExit) as exc_info:
-            load_config()
-        assert exc_info.value.code == 1
+        from unittest.mock import patch
+
+        # Evitar que o .env real seja carregado
+        with patch("luanny.config._find_env_file", return_value=None):
+            with pytest.raises(SystemExit) as exc_info:
+                load_config()
+            assert exc_info.value.code == 1
 
     def test_load_config_with_cli_overrides(
         self, env_with_credentials: None
