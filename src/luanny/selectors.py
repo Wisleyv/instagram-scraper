@@ -59,40 +59,40 @@ PROFILE_POSTS_GRID = Selector(
 # ---------------------------------------------------------------------------
 
 POST_CAPTION = Selector(
-    primary="div[data-testid='post-comment-root'] span, article span[dir='auto']",
-    fallbacks=("article ul li span",),
+    primary="main span[dir='auto']",
+    fallbacks=("main div[dir='auto']", "main span"),
     description="Texto da legenda do post",
 )
 
 POST_CAPTION_MORE_BUTTON = Selector(
-    primary="button:has-text('mais'), button:has-text('more')",
+    primary="main button:has-text('mais'), main button:has-text('more')",
     description="Botão 'mais/more' para expandir legenda",
 )
 
 POST_IMAGE = Selector(
-    primary="article img[src*='instagram'], article div[role='button'] img",
-    fallbacks=("article img",),
+    primary="main img[src*='instagram']",
+    fallbacks=("main img",),
     description="Imagem principal do post",
 )
 
 POST_VIDEO = Selector(
-    primary="article video",
+    primary="main video",
     description="Vídeo do post",
 )
 
 POST_CAROUSEL_NEXT = Selector(
-    primary="button[aria-label*='Avançar'], button[aria-label*='Next']",
-    fallbacks=("article button[aria-label*='próxim']",),
+    primary="main button[aria-label*='Avançar'], main button[aria-label*='Next']",
     description="Botão avançar do carrossel (bilíngue pt/en)",
 )
 
 POST_CAROUSEL_INDICATOR = Selector(
-    primary="div[role='tablist'], div._acnb",
+    primary="main div[role='tablist']",
+    fallbacks=("main div._acnb",),
     description="Indicador de slides do carrossel",
 )
 
 POST_ARIA_LABELS = Selector(
-    primary="article [aria-label]",
+    primary="main [aria-label]",
     description="Todos os elementos com aria-label dentro do post",
 )
 
