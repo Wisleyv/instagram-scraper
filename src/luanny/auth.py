@@ -118,7 +118,15 @@ def ensure_authenticated(session: BrowserSession, config: AppConfig) -> bool:
         "\n╚════════════════════════════════════════════════════════════╝"
     )
 
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from playwright.sync_api import Error as PlaywrightError
 
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1.5, min=2, max=10),
+    retry=retry_if_exception_type(PlaywrightError),
+    reraise=True
+)
 def _load_session(session: BrowserSession) -> bool:
     """
     Tenta carregar e validar sessão salva.
@@ -142,6 +150,11 @@ def _load_session(session: BrowserSession) -> bool:
 
         # Esperar um pouco para o conteúdo dinâmico carregar
         time.sleep(2)
+        
+        # (5.5) Detecção de Block logo após carregamento da sessão salva
+        if _detect_block(page):
+            logger.error("sessao_bloqueada", msg="A sessão guardada parece estar bloqueada pela Meta.")
+            return False
 
         # Verificar se algum indicador de login está presente
         for selector in LOGGED_IN_INDICATORS:
@@ -168,6 +181,12 @@ def _load_session(session: BrowserSession) -> bool:
         return False
 
 
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1.5, min=2, max=10),
+    retry=retry_if_exception_type(PlaywrightError),
+    reraise=True
+)
 def _perform_login(session: BrowserSession, config: AppConfig) -> bool:
     """
     Realiza login no Instagram com credenciais.

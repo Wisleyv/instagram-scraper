@@ -84,10 +84,17 @@ def run_collection(profile: str, config: AppConfig) -> CollectionResult:
 
         # --- Etapa 4: Extração de dados por post ---
         from luanny.post_extractor import extract_post
+        from luanny.browser import human_delay_sync
 
         posts = []
         for i, (post_id, post_url) in enumerate(post_urls):
             logger.info("etapa_extração", post=f"{i + 1}/{len(post_urls)}", post_id=post_id)
+            
+            # (5.3) Rate Limiting dinâmico configurável para evitar Action Block da Meta
+            if i > 0:
+                logger.debug("rate_limiting", msg=f"Aguardando entre {config.delay_min} e {config.delay_max}s")
+                human_delay_sync(config.delay_min, config.delay_max)
+                
             record = extract_post(session, post_id, post_url, profile, config)
             posts.append(record)
 

@@ -63,6 +63,15 @@ def _is_auto_generated_alt(alt_text: str) -> bool:
         
     return False
 
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from playwright.sync_api import Error as PlaywrightError
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1.5, min=2, max=10),
+    retry=retry_if_exception_type(PlaywrightError),
+    reraise=True
+)
 def extract_post(
     session: BrowserSession,
     post_id: str,
@@ -95,6 +104,14 @@ def extract_post(
         time.sleep(3.0)  # Aguardar renderização React
     except Exception as e:
         logger.error("extractor_navigation_error", error=str(e), post_id=post_id)
+        
+        # (5.4) Captura de evidência de erro em caso de falha brutal na rede
+        try:
+            str_ts = str(int(time.time()))
+            page.screenshot(path=f"evidence_error_{post_id}_{str_ts}.png")
+        except:
+            pass
+            
         raise
         
     # Verificar erro 404 (página não existe)
