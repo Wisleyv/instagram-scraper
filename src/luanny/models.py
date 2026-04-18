@@ -11,11 +11,11 @@ Os modelos são definidos com Pydantic v2 para validação e serialização.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -160,6 +160,10 @@ class PostRecord(BaseModel):
         default_factory=lambda: datetime.now(timezone.utc),
         description="Data/hora da coleta (ISO 8601 com fuso horário)",
     )
+    published_at: Optional[datetime] = Field(
+        default=None,
+        description="Data/hora de publicação do post no Instagram (ISO 8601)",
+    )
 
     # Conteúdo textual
     caption: Optional[str] = Field(default=None, description="Legenda completa do post")
@@ -220,6 +224,18 @@ class CollectionMetadata(BaseModel):
     collector_version: str = Field(description="Versão do software")
     browser_language: str = Field(default="pt-BR", description="Idioma do browser")
     max_posts_requested: int = Field(description="Limite de posts solicitado")
+    since: Optional[date] = Field(
+        default=None,
+        description="Data inicial da janela de coleta (quando configurada)",
+    )
+    until: Optional[date] = Field(
+        default=None,
+        description="Data final da janela de coleta (quando configurada)",
+    )
+    resume_enabled: bool = Field(
+        default=True,
+        description="Se a execução reaproveitou estado incremental anterior",
+    )
     posts_discovered: int = Field(default=0, description="Posts encontrados no grid")
     posts_collected: int = Field(default=0, description="Posts processados com sucesso")
     posts_failed: int = Field(default=0, description="Posts com falha total")
@@ -230,6 +246,31 @@ class CollectionResult(BaseModel):
     """Resultado consolidado de uma execução completa de coleta."""
     metadata: CollectionMetadata = Field(description="Metadados da execução")
     posts: list[PostRecord] = Field(default_factory=list, description="Posts coletados")
+
+
+class CollectionState(BaseModel):
+    """Estado incremental persistido para evitar retrabalho entre execuções."""
+    profile: str = Field(description="Perfil ao qual o estado pertence")
+    collection_id: Optional[str] = Field(
+        default=None,
+        description="Última execução que atualizou este estado",
+    )
+    seen_post_ids: list[str] = Field(
+        default_factory=list,
+        description="IDs de posts já coletados com sucesso",
+    )
+    last_published_at: Optional[datetime] = Field(
+        default=None,
+        description="Data de publicação mais antiga já coletada",
+    )
+    last_post_id: Optional[str] = Field(
+        default=None,
+        description="ID do post associado a last_published_at",
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="Momento da última atualização do estado",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -260,5 +301,26 @@ class AppConfig(BaseModel):
     delay_min: float = Field(default=3.0, ge=1.0, description="Delay mínimo entre ações (s)")
     delay_max: float = Field(default=7.0, ge=2.0, description="Delay máximo entre ações (s)")
 
+    # Janela temporal e retomada incremental
+    since: Optional[date] = Field(
+        default=None,
+        description="Data inicial de interesse (AAAA-MM-DD)",
+    )
+    until: Optional[date] = Field(
+        default=None,
+        description="Data final de interesse (AAAA-MM-DD)",
+    )
+    resume: bool = Field(
+        default=True,
+        description="Se deve reutilizar estado incremental para deduplicação",
+    )
+
     # Diretórios
     output_dir: str = Field(default="data", description="Diretório base de saída")
+
+    @model_validator(mode="after")
+    def _validate_temporal_window(self) -> "AppConfig":
+        """Valida consistência da janela temporal configurada."""
+        if self.since and self.until and self.since > self.until:
+            raise ValueError("since deve ser menor ou igual a until")
+        return self

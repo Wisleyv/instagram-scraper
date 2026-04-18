@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 from luanny import __version__
 from luanny.log import get_logger
 from luanny.models import AppConfig, Evidence, PostRecord
+from luanny.runtime_paths import resolve_runtime_path
 
 if TYPE_CHECKING:
     from luanny.browser import BrowserSession
@@ -52,13 +53,21 @@ def capture_evidence(
         base_output_dir: Diretório raiz da run atual.
     """
     if not config.capture_evidence:
-        logger.debug("evidence_skipped", msg="Captura de evidência desabilitada", post_id=record.post_id)
+        logger.debug(
+            "evidence_skipped",
+            msg="Captura de evidência desabilitada",
+            post_id=record.post_id,
+        )
         return
 
     logger.info("evidence_started", post_id=record.post_id)
 
     # Definir diretório de evidências para este post
-    run_dir = base_output_dir if base_output_dir else Path(config.output_dir)
+    run_dir = (
+        base_output_dir
+        if base_output_dir
+        else resolve_runtime_path(config.output_dir)
+    )
     post_evidence_dir = run_dir / "evidence" / record.post_id
     post_evidence_dir.mkdir(parents=True, exist_ok=True)
 
@@ -81,13 +90,16 @@ def capture_evidence(
         html_hash = _compute_sha256(html_path)
 
         # Atualizar Record com estrutura validada em Evidence
-        # Usamos caminhos relativos ao run_dir para facilitar portabilidade do dataset exportado
+        # Usamos caminhos relativos ao run_dir para facilitar portabilidade
+        # do dataset exportado
         rel_screenshot = screenshot_path.relative_to(run_dir).as_posix()
         rel_html = html_path.relative_to(run_dir).as_posix()
 
         record.evidence = Evidence(
             post_url=record.post_url,
-            profile_url=f"https://www.instagram.com/{record.profile_username}/",
+            profile_url=(
+                f"https://www.instagram.com/{record.profile_username}/"
+            ),
             screenshot_path=rel_screenshot,
             html_path=rel_html,
             screenshot_hash=screenshot_hash,
@@ -98,6 +110,10 @@ def capture_evidence(
             viewport_size="1280x720",
         )
 
-        logger.debug("evidence_saved", post_id=record.post_id, hash=screenshot_hash[:8])
+        logger.debug(
+            "evidence_saved",
+            post_id=record.post_id,
+            hash=screenshot_hash[:8],
+        )
     except Exception as e:
         logger.error("evidence_failed", post_id=record.post_id, error=str(e))

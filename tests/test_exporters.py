@@ -52,6 +52,7 @@ def sample_result() -> CollectionResult:
         post_id="P1",
         post_url="url1",
         profile_username="test_profile",
+        published_at=datetime(2026, 4, 15, 12, 0, tzinfo=timezone.utc),
         caption="Post 1",
         hashtags=["#a"],
         post_type=PostType.IMAGE,
@@ -100,6 +101,7 @@ def test_export_results(sample_result, mock_config, tmp_path):
     df = pd.read_csv(csv_path)
     assert len(df) == 2
     assert "post_id" in df.columns
+    assert "published_at" in df.columns
     assert "alts_joined" in df.columns
     # Verifica o valor extraido da imagem (p1 tem Alt 1)
     assert df.iloc[0]["alts_joined"] == "Alt 1"

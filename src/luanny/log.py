@@ -14,11 +14,17 @@ from pathlib import Path
 
 import structlog
 
+from luanny.runtime_paths import get_logs_dir
+
 
 _configured = False
 
 
-def setup_logging(*, log_dir: str = "logs", verbose: bool = False) -> None:
+def setup_logging(
+    *,
+    log_dir: str | Path | None = None,
+    verbose: bool = False,
+) -> None:
     """
     Configura o logging estruturado para a aplicação.
 
@@ -30,7 +36,7 @@ def setup_logging(*, log_dir: str = "logs", verbose: bool = False) -> None:
     if _configured:
         return
 
-    log_path = Path(log_dir)
+    log_path = Path(log_dir) if log_dir is not None else get_logs_dir()
     log_path.mkdir(parents=True, exist_ok=True)
 
     # Nível base
@@ -60,7 +66,10 @@ def setup_logging(*, log_dir: str = "logs", verbose: bool = False) -> None:
     _configured = True
 
 
-def get_logger(name: str | None = None, **initial_context: object) -> structlog.stdlib.BoundLogger:
+def get_logger(
+    name: str | None = None,
+    **initial_context: object,
+) -> structlog.stdlib.BoundLogger:
     """
     Retorna um logger estruturado com contexto inicial.
 

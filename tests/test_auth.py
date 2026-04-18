@@ -22,6 +22,8 @@ from luanny.auth import (
     _dismiss_cookie_banner,
     _dismiss_post_login_dialogs,
     _invalidate_session,
+    BLOCK_INDICATORS,
+    LOGGED_IN_INDICATORS,
     INSTAGRAM_LOGIN_URL,
     INSTAGRAM_HOME_URL,
     LOGIN_USERNAME_SELECTORS,
@@ -75,7 +77,15 @@ class TestLoadSession:
         # Simular que a página tem um indicador de login
         mock_session.page.url = INSTAGRAM_HOME_URL
         element = MagicMock()
-        mock_session.page.query_selector.return_value = element
+
+        def fake_query_selector(selector):
+            if selector in BLOCK_INDICATORS:
+                return None
+            if selector in LOGGED_IN_INDICATORS:
+                return element
+            return None
+
+        mock_session.page.query_selector.side_effect = fake_query_selector
 
         assert _load_session(mock_session) is True
 

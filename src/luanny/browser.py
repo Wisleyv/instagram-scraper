@@ -13,20 +13,23 @@ import asyncio
 import random
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
-from playwright.sync_api import Browser, BrowserContext, Page, Playwright, sync_playwright
+from playwright.sync_api import (
+    Browser,
+    BrowserContext,
+    Page,
+    Playwright,
+    sync_playwright,
+)
 
 from luanny.log import get_logger
 from luanny.models import AppConfig
+from luanny.runtime_paths import get_storage_state_path
 
 logger = get_logger("browser")
 
 # Viewport padrão — evita detecção por dimensões incomuns
 DEFAULT_VIEWPORT = {"width": 1280, "height": 720}
-
-# Caminho padrão para o storage state (sessão persistida)
-STORAGE_STATE_PATH = Path("storage_state.json")
 
 
 @dataclass
@@ -109,7 +112,10 @@ def create_browser_context(config: AppConfig) -> BrowserSession:
             "Chrome/121.0.0.0 Safari/537.36"
         ),
         "extra_http_headers": {
-            "Accept-Language": f"{config.browser_language},{config.browser_language.split('-')[0]};q=0.9,en;q=0.8",
+            "Accept-Language": (
+                f"{config.browser_language},"
+                f"{config.browser_language.split('-')[0]};q=0.9,en;q=0.8"
+            ),
         },
     }
 
@@ -172,10 +178,13 @@ def save_storage_state(context: BrowserContext) -> Path:
 
 def _get_storage_state_path() -> Path:
     """Retorna o caminho do arquivo de storage state."""
-    return STORAGE_STATE_PATH
+    return get_storage_state_path()
 
 
-async def human_delay(min_seconds: float = 3.0, max_seconds: float = 7.0) -> None:
+async def human_delay(
+    min_seconds: float = 3.0,
+    max_seconds: float = 7.0,
+) -> None:
     """
     Aguarda um tempo aleatório simulando comportamento humano.
 
@@ -188,7 +197,10 @@ async def human_delay(min_seconds: float = 3.0, max_seconds: float = 7.0) -> Non
     await asyncio.sleep(delay)
 
 
-def human_delay_sync(min_seconds: float = 3.0, max_seconds: float = 7.0) -> None:
+def human_delay_sync(
+    min_seconds: float = 3.0,
+    max_seconds: float = 7.0,
+) -> None:
     """
     Versão síncrona do human_delay — para uso com Playwright sync API.
 

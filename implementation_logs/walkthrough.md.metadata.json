@@ -1,0 +1,5 @@
+{
+  "artifactType": "ARTIFACT_TYPE_WALKTHROUGH",
+  "summary": "Walkthrough documentando a evolução do Projeto Luanny até o momento.\n\nRegistra o que foi realizado na Fase 0 (Fundação e Contratos): criação completa do scaffold do projeto incluindo pyproject.toml, 14 módulos Python (com modelos Pydantic completos e stubs para todos os módulos futuros), CLI funcional via Typer, logging estruturado com structlog, infraestrutura de testes com 21 testes passando, e validação de configuração com mensagens claras.\n\nDocumenta também o desbloqueio da Fase 1 com o recebimento das credenciais da conta de teste do Instagram (luannypesquisa) e os próximos passos: implementação de browser.py e auth.py com Playwright.",
+  "updatedAt": "2026-04-17T11:25:44.060188100Z"
+}

@@ -10,7 +10,10 @@ from __future__ import annotations
 import re
 import time
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
+
+from playwright.sync_api import Error as PlaywrightError
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from luanny.log import get_logger
 from luanny.models import (
@@ -27,9 +30,9 @@ from luanny.selectors import (
     POST_CAPTION_MORE_BUTTON,
     POST_IMAGE,
     POST_VIDEO,
-    POST_CAROUSEL_NEXT,
     POST_CAROUSEL_INDICATOR,
     POST_ARIA_LABELS,
+    POST_PUBLISHED_TIME,
     AUTO_ALT_PATTERNS_PT,
     AUTO_ALT_PATTERNS_EN,
 )
@@ -39,32 +42,50 @@ if TYPE_CHECKING:
 
 logger = get_logger("post_extractor")
 
+def _parse_instagram_datetime(raw_value: str) -> Optional[datetime]:
+    """Converte datetime ISO do Instagram para datetime UTC."""
+    if not raw_value:
+        return None
+
+    normalized = raw_value.strip().replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
 def _extract_hashtags_and_mentions(text: str) -> tuple[List[str], List[str]]:
     """Extrai listas de hashtags e menções de um texto."""
     hashtags = re.findall(r"(#\w+)", text)
     mentions = re.findall(r"(@\w+)", text)
     return hashtags, mentions
 
+
 def _is_auto_generated_alt(alt_text: str) -> bool:
-    """Verifica se o alt text parece ser gerado automaticamente pelo Instagram."""
+    """Verifica se o alt text parece ser gerado automaticamente."""
     if not alt_text:
         return False
-        
+
     alt_lower = alt_text.lower()
-    
+
     # Checar padrões em inglês e português
     for pattern in AUTO_ALT_PATTERNS_EN + AUTO_ALT_PATTERNS_PT:
         if pattern.lower() in alt_lower:
             return True
-            
-    # Checar se começa com certas strings comuns de ia
-    if alt_lower.startswith("photo by") or alt_lower.startswith("foto de") or "may be an image of" in alt_lower:
-        return True
-        
-    return False
 
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-from playwright.sync_api import Error as PlaywrightError
+    # Checar se começa com certas strings comuns de ia
+    if (
+        alt_lower.startswith("photo by")
+        or alt_lower.startswith("foto de")
+        or "may be an image of" in alt_lower
+    ):
+        return True
+
+    return False
 
 @retry(
     stop=stop_after_attempt(3),
@@ -229,12 +250,29 @@ def extract_post(
     except Exception as e:
         logger.debug("extractor_aria_error", error=str(e))
 
+    # 7. Data de publicação do post (quando disponível no DOM)
+    published_at: Optional[datetime] = None
+    time_selectors = [POST_PUBLISHED_TIME.primary] + list(POST_PUBLISHED_TIME.fallbacks)
+    for selector in time_selectors:
+        try:
+            time_element = page.query_selector(selector)
+            if not time_element:
+                continue
+            datetime_attr = time_element.get_attribute("datetime")
+            parsed = _parse_instagram_datetime(datetime_attr or "")
+            if parsed:
+                published_at = parsed
+                break
+        except Exception:
+            continue
+
     # Construir o Record
     record = PostRecord(
         post_id=post_id,
         post_url=post_url,
         profile_username=profile_username,
         scraped_at=datetime.now(timezone.utc),
+        published_at=published_at,
         caption=caption_text,
         hashtags=hashtags,
         mentions=mentions,

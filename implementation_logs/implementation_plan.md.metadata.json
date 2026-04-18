@@ -1,0 +1,6 @@
+{
+  "artifactType": "ARTIFACT_TYPE_IMPLEMENTATION_PLAN",
+  "summary": "Plano de implementação completo do Projeto Luanny — Coletor de Acessibilidade do Instagram.\n\nO documento registra 7 fases de desenvolvimento (0–6 + módulo de áudio fora do escopo v1). A Fase 0 (Fundação e Contratos) está 100% concluída e validada, com todos os critérios de aceite atendidos: 21 testes passando, CLI funcional, modelos Pydantic definidos, stubs de todos os módulos criados, e infraestrutura de testes configurada.\n\nA Fase 1 (Browser e Autenticação) é a próxima a ser executada, agora desbloqueada pela provisão das credenciais de teste do Instagram (luannypesquisa). O plano inclui cronograma estimado, estratégia de testes transversal, registro de decisões arquiteturais, e critérios de aceite por fase.\n\nAtualizado com registro de decisão D7 documentando a conta de teste e desbloqueio da Fase 1.",
+  "updatedAt": "2026-04-17T11:25:07.833507100Z",
+  "requestFeedback": true
+}

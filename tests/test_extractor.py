@@ -54,6 +54,10 @@ def test_extract_post_image(mock_session, mock_config, monkeypatch):
     def fake_query_selector(selector):
         if "video" in selector: return None
         if "tablist" in selector or "_acnb" in selector: return None
+        if "time" in selector:
+            el = MagicMock()
+            el.get_attribute.return_value = "2026-04-15T14:30:00.000Z"
+            return el
         return None
     mock_session.page.query_selector.side_effect = fake_query_selector
 
@@ -97,6 +101,8 @@ def test_extract_post_image(mock_session, mock_config, monkeypatch):
     
     assert len(record.aria_labels) == 1
     assert record.aria_labels[0].aria_label == "Like"
+    assert record.published_at is not None
+    assert record.published_at.year == 2026
 
 
 def test_extract_post_video(mock_session, mock_config, monkeypatch):
@@ -129,3 +135,4 @@ def test_extract_post_video(mock_session, mock_config, monkeypatch):
     assert len(record.media) == 1
     assert record.media[0].media_type == MediaType.VIDEO
     assert record.media[0].alt_text_source == AltTextSource.ABSENT
+    assert record.published_at is None

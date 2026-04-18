@@ -5,7 +5,7 @@ e tolerância a campos opcionais.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 import pytest
 
@@ -294,3 +294,27 @@ class TestAppConfig:
         assert config.max_posts == 50
         assert config.headless is False
         assert config.delay_min == 5.0
+
+    def test_config_with_temporal_window(self) -> None:
+        """AppConfig aceita janela temporal válida."""
+        config = AppConfig(
+            instagram_username="test",
+            instagram_password="test123",
+            since=date(2026, 1, 1),
+            until=date(2026, 12, 31),
+            resume=False,
+        )
+
+        assert config.since == date(2026, 1, 1)
+        assert config.until == date(2026, 12, 31)
+        assert config.resume is False
+
+    def test_config_rejects_invalid_temporal_window(self) -> None:
+        """AppConfig rejeita when since > until."""
+        with pytest.raises(Exception):  # ValidationError
+            AppConfig(
+                instagram_username="test",
+                instagram_password="test123",
+                since=date(2026, 12, 31),
+                until=date(2026, 1, 1),
+            )

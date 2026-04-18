@@ -7,6 +7,7 @@ e extração dos identificadores a partir das URLs.
 
 from __future__ import annotations
 
+from datetime import date
 from unittest.mock import MagicMock, call
 
 import pytest
@@ -134,3 +135,101 @@ class TestProfileDiscovery:
 
         assert len(result) == 1
         assert result[0] == ("VALID", "https://www.instagram.com/p/VALID/")
+
+    def test_discover_posts_skip_seen_ids_and_collect_older(
+        self,
+        mock_session,
+        monkeypatch,
+    ):
+        """Em resume, deve ignorar vistos e seguir até achar novos."""
+        monkeypatch.setattr("time.sleep", MagicMock())
+        monkeypatch.setattr("luanny.browser.human_delay_sync", MagicMock())
+        monkeypatch.setattr("luanny.auth._dismiss_cookie_banner", MagicMock())
+        monkeypatch.setattr("luanny.auth._dismiss_post_login_dialogs", MagicMock())
+
+        config = AppConfig(
+            instagram_username="test_user",
+            instagram_password="test_pass",
+            max_posts=2,
+            headless=True,
+        )
+
+        el_s1 = MagicMock()
+        el_s1.get_attribute.return_value = "/p/SEEN_1/"
+        el_s2 = MagicMock()
+        el_s2.get_attribute.return_value = "/p/SEEN_2/"
+        el_n1 = MagicMock()
+        el_n1.get_attribute.return_value = "/p/NEW_1/"
+        el_n2 = MagicMock()
+        el_n2.get_attribute.return_value = "/reel/NEW_2/"
+
+        mock_locator = MagicMock()
+        mock_locator.all.side_effect = [
+            [el_s1, el_s2],
+            [el_s1, el_s2],
+            [el_s2, el_n1, el_n2],
+        ]
+        mock_session.page.locator.return_value = mock_locator
+        mock_session.page.evaluate.return_value = 1000
+
+        result = discover_posts(
+            mock_session,
+            "https://instagram.com/test",
+            config,
+            seen_post_ids={"SEEN_1", "SEEN_2"},
+        )
+
+        assert result == [
+            ("NEW_1", "https://www.instagram.com/p/NEW_1/"),
+            ("NEW_2", "https://www.instagram.com/reel/NEW_2/"),
+        ]
+
+    def test_discover_posts_stops_when_since_boundary_is_reached(
+        self,
+        mock_session,
+        monkeypatch,
+    ):
+        """Com since, interrompe discovery quando os itens visíveis já são antigos."""
+        monkeypatch.setattr("time.sleep", MagicMock())
+        monkeypatch.setattr("luanny.browser.human_delay_sync", MagicMock())
+        monkeypatch.setattr("luanny.auth._dismiss_cookie_banner", MagicMock())
+        monkeypatch.setattr("luanny.auth._dismiss_post_login_dialogs", MagicMock())
+
+        config = AppConfig(
+            instagram_username="test_user",
+            instagram_password="test_pass",
+            max_posts=5,
+            headless=True,
+            since=date(2026, 4, 10),
+        )
+
+        def make_dated_element(href: str, datetime_value: str) -> MagicMock:
+            element = MagicMock()
+
+            def get_attribute(name: str):
+                if name == "href":
+                    return href
+                if name == "datetime":
+                    return datetime_value
+                return None
+
+            element.get_attribute.side_effect = get_attribute
+            return element
+
+        old_1 = make_dated_element("/p/OLD_1/", "2026-04-01T10:00:00Z")
+        old_2 = make_dated_element("/p/OLD_2/", "2026-04-02T10:00:00Z")
+        old_3 = make_dated_element("/reel/OLD_3/", "2026-04-03T10:00:00Z")
+
+        mock_locator = MagicMock()
+        mock_locator.all.side_effect = [
+            [old_1, old_2],
+            [old_1, old_2],
+            [old_2, old_3],
+            [old_2, old_3],
+        ]
+        mock_session.page.locator.return_value = mock_locator
+        mock_session.page.evaluate.return_value = 1000
+
+        result = discover_posts(mock_session, "https://instagram.com/test", config)
+
+        assert result == []

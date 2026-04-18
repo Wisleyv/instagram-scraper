@@ -32,6 +32,11 @@ Thumbs.db
 
 # PyInstaller
 *.spec
+!Luanny.spec
+
+# Artefatos de rastreamento/diagnóstico locais
+implementation_logs/*.resolved*
+implementation_logs/*.webp
 
 # Testes
 .coverage

@@ -96,6 +96,12 @@ POST_ARIA_LABELS = Selector(
     description="Todos os elementos com aria-label dentro do post",
 )
 
+POST_PUBLISHED_TIME = Selector(
+    primary="main time[datetime]",
+    fallbacks=("time[datetime]",),
+    description="Elemento time com datetime da publicação",
+)
+
 # ---------------------------------------------------------------------------
 # Seletores de detecção de bloqueio
 # ---------------------------------------------------------------------------

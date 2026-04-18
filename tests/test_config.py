@@ -5,6 +5,8 @@ overrides da CLI, e falha clara quando credenciais ausentes.
 
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 
 from luanny.config import load_config
@@ -30,7 +32,7 @@ class TestLoadConfig:
         from unittest.mock import patch
 
         # Evitar que o .env real seja carregado
-        with patch("luanny.config._find_env_file", return_value=None):
+        with patch("luanny.config.find_env_file", return_value=None):
             with pytest.raises(SystemExit) as exc_info:
                 load_config()
             assert exc_info.value.code == 1
@@ -74,3 +76,31 @@ class TestLoadConfig:
         monkeypatch.setenv("MAX_POSTS", "not_a_number")
         config = load_config()
         assert config.max_posts == 30  # default
+
+    def test_load_config_with_temporal_window_from_env(
+        self, monkeypatch: pytest.MonkeyPatch, env_with_credentials: None
+    ) -> None:
+        """Carrega since/until/resume a partir de variáveis de ambiente."""
+        monkeypatch.setenv("SINCE", "2026-01-01")
+        monkeypatch.setenv("UNTIL", "2026-12-31")
+        monkeypatch.setenv("RESUME", "false")
+
+        config = load_config()
+
+        assert config.since == date(2026, 1, 1)
+        assert config.until == date(2026, 12, 31)
+        assert config.resume is False
+
+    def test_load_config_with_temporal_window_from_overrides(
+        self, env_with_credentials: None
+    ) -> None:
+        """Overrides de since/until/resume têm prioridade sobre .env."""
+        config = load_config(
+            since="2025-01-01",
+            until="2025-06-30",
+            resume=False,
+        )
+
+        assert config.since == date(2025, 1, 1)
+        assert config.until == date(2025, 6, 30)
+        assert config.resume is False
