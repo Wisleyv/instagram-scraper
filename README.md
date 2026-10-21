@@ -1,8 +1,8 @@
-# Luanny
+# Instagram Scraper
 
 **Coletor de dados de acessibilidade do Instagram para pesquisa acadêmica.**
 
-Luanny é uma ferramenta que coleta e estrutura informações de acessibilidade
+O Instagram Scraper é uma ferramenta que coleta e estrutura informações de acessibilidade
 de publicações públicas do Instagram, gerando dados prontos para análise
 acadêmica e auditoria de práticas de acessibilidade digital.
 
